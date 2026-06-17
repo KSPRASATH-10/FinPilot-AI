@@ -1,0 +1,18 @@
+[
+  {
+    "id": "user_1781586772733",
+    "name": "test",
+    "email": "test@gmail.com",
+    "passwordHash": "$2a$10$GORoRYEiWDSlc5PqgWwt3.hVzp0qx7RCywtldE4meMgZj5nNLlfOq",
+    "isPro": false,
+    "createdAt": "2026-06-16T05:12:52.733Z"
+  },
+  {
+    "id": "user_1781674629624",
+    "name": "test2",
+    "email": "test2@gmail.com",
+    "passwordHash": "$2a$10$hismaZaQ9CPVs4PxMTRdpOeJLCYQNQEmdLpLY0D4SRr8rBF4i0vlC",
+    "isPro": false,
+    "createdAt": "2026-06-17T05:37:09.624Z"
+  }
+]

@@ -1,0 +1,58 @@
+{
+  "expo": {
+    "name": "FinPilot",
+    "slug": "finpilot",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "backgroundColor": "#080C14"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "ai.finpilot.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "FinPilot needs camera access to scan bills and receipts.",
+        "NSPhotoLibraryUsageDescription": "FinPilot needs gallery access to select bill images.",
+        "NSPhotoLibraryAddUsageDescription": "FinPilot needs permission to save reports."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#080C14"
+      },
+      "package": "ai.finpilot.app",
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
+      ]
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow FinPilot to access your camera to scan bills."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow FinPilot to access your photos to select bill images.",
+          "cameraPermission": "Allow FinPilot to use your camera to scan bills."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "scheme": "finpilot"
+  }
+}

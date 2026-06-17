@@ -1,0 +1,18 @@
+[
+  {
+    "id": "manual_1781674589245",
+    "date": "2026-06-17T05:36:29.245Z",
+    "amount": 25,
+    "category": "Food",
+    "description": "Food",
+    "type": "expense"
+  },
+  {
+    "id": "manual_1781673864745",
+    "date": "2026-06-17T05:24:24.745Z",
+    "amount": 155,
+    "category": "Transport",
+    "description": "Transport",
+    "type": "expense"
+  }
+]

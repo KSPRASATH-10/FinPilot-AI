@@ -1,0 +1,22 @@
+{
+  "name": "finpilot-workspace",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/mobile",
+    "apps/backend"
+  ],
+  "scripts": {
+    "mobile": "cd apps/mobile && npx expo start --clear",
+    "mobile:android": "cd apps/mobile && npx expo start --android --clear",
+    "mobile:ios": "cd apps/mobile && npx expo start --ios --clear",
+    "backend": "cd apps/backend && npm run dev",
+    "backend:build": "cd apps/backend && npm run build",
+    "forecast": "cd apps/forecasting-service && uvicorn app.main:app --reload --host 0.0.0.0 --port 8000",
+    "install:all": "npm install && cd apps/backend && npm install",
+    "dev": "concurrently \"npm run backend\" \"npm run forecast\" \"npm run mobile\""
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
