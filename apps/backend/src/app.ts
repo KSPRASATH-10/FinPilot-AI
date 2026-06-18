@@ -9,6 +9,7 @@ import assistantRoutes from "./modules/assistant/assistant.routes";
 import billRoutes from "./modules/bills/bill.routes";
 import reportRoutes from "./modules/reports/report.routes";
 import transactionRoutes from "./modules/transactions/transactions.routes";
+import voiceRoutes from "./modules/voice/voice.routes";
 
 const app = express();
 
@@ -25,6 +26,7 @@ app.use("/api/v1/assistant", assistantRoutes);
 app.use("/api/v1/bills", billRoutes);
 app.use("/api/v1/reports", reportRoutes);
 app.use("/api/v1/transactions", transactionRoutes);
+app.use("/api/v1/voice", voiceRoutes);
 
 app.use("/api/v1/goals", (_req, res) => {
   res.json({ success: true, data: { items: [] } });

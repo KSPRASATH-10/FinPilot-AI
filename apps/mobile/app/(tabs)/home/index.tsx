@@ -11,6 +11,7 @@ import { useAuthStore } from "../../../store/useAuthStore";
 import { useAnalyticsStore, useTransactionStore } from "../../../store/useFinanceStores";
 import { useTheme } from "../../../theme/useTheme";
 import { DARK as DT } from "../../../theme";
+import { VoiceEntryModal } from "../../../components/voice/VoiceEntryModal";
 
 const CATEGORIES = ["Food", "Transport", "Utilities", "Healthcare", "Entertainment", "Education", "General"];
 
@@ -23,16 +24,12 @@ export default function HomeScreen() {
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
   const [addModal, setAddModal] = useState(false);
+  const [voiceModal, setVoiceModal] = useState(false);
   const [addType, setAddType] = useState<"expense" | "income">("expense");
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("Food");
 
-  // On every mount and whenever the logged-in user changes:
-  // fetchTransactions() calls the backend, reads from disk for this user,
-  // replaces Zustand state with real persisted data, then recomputes summary.
-  // This is the single authoritative load point — fixes blank home after reload
-  // and fixes cross-account data bleed on account switching.
   useEffect(() => {
     fetchTransactions();
   }, [user?.id]);
@@ -152,15 +149,26 @@ export default function HomeScreen() {
           />
         </View>
 
-        {/* Add Entry Button */}
-        <TouchableOpacity
-          style={[s.addBtn, { backgroundColor: T.accent }]}
-          onPress={() => setAddModal(true)}
-          activeOpacity={0.82}
-        >
-          <Text style={s.addBtnIcon}>＋</Text>
-          <Text style={s.addBtnText}>Add Income / Expense</Text>
-        </TouchableOpacity>
+        {/* Add Entry Buttons Row */}
+        <View style={s.addRow}>
+          <TouchableOpacity
+            style={[s.addBtn, { backgroundColor: T.accent, flex: 1 }]}
+            onPress={() => setAddModal(true)}
+            activeOpacity={0.82}
+          >
+            <Text style={s.addBtnIcon}>＋</Text>
+            <Text style={s.addBtnText}>Add Entry</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[s.addBtn, s.voiceBtn, { borderColor: T.accent }]}
+            onPress={() => setVoiceModal(true)}
+            activeOpacity={0.82}
+          >
+            <Text style={s.addBtnIcon}>🎙️</Text>
+            <Text style={[s.addBtnText, { color: T.accent }]}>Voice</Text>
+          </TouchableOpacity>
+        </View>
 
         {/* Quick Actions */}
         <Text style={[s.sectionTitle, { color: T.text }]}>Quick Actions</Text>
@@ -214,13 +222,12 @@ export default function HomeScreen() {
         </GlassCard>
       </ScrollView>
 
-      {/* Add Income/Expense Modal */}
+      {/* Manual Add Income/Expense Modal */}
       <Modal visible={addModal} transparent animationType="slide">
         <View style={s.modalOverlay}>
           <View style={[s.modalCard, { backgroundColor: DT.bg, borderColor: DT.border }]}>
             <Text style={[s.modalTitle, { color: DT.text }]}>Add Entry</Text>
 
-            {/* Type Toggle */}
             <View style={s.typeRow}>
               <TouchableOpacity
                 style={[s.typeBtn, addType === "expense" && { backgroundColor: DT.danger }]}
@@ -236,7 +243,6 @@ export default function HomeScreen() {
               </TouchableOpacity>
             </View>
 
-            {/* Amount */}
             <Text style={[s.fieldLabel, { color: DT.textSub }]}>Amount (₹)</Text>
             <TextInput
               style={[s.input, { backgroundColor: DT.inputBg, borderColor: DT.border, color: DT.text }]}
@@ -247,7 +253,6 @@ export default function HomeScreen() {
               keyboardType="numeric"
             />
 
-            {/* Description */}
             <Text style={[s.fieldLabel, { color: DT.textSub }]}>Description (optional)</Text>
             <TextInput
               style={[s.input, { backgroundColor: DT.inputBg, borderColor: DT.border, color: DT.text }]}
@@ -257,7 +262,6 @@ export default function HomeScreen() {
               onChangeText={setDescription}
             />
 
-            {/* Category (expenses only) */}
             {addType === "expense" && (
               <>
                 <Text style={[s.fieldLabel, { color: DT.textSub }]}>Category</Text>
@@ -277,7 +281,6 @@ export default function HomeScreen() {
               </>
             )}
 
-            {/* Actions */}
             <TouchableOpacity
               style={[s.confirmModalBtn, { backgroundColor: addType === "income" ? DT.success : DT.accent }]}
               onPress={handleAddEntry}
@@ -294,6 +297,13 @@ export default function HomeScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Voice Entry Modal */}
+      <VoiceEntryModal
+        visible={voiceModal}
+        onClose={() => setVoiceModal(false)}
+        onAdd={addTransaction}
+      />
     </Screen>
   );
 }
@@ -316,12 +326,19 @@ const s = StyleSheet.create({
   progressFill: { height: 6, borderRadius: 6 },
   noDataHint: { fontSize: 11, marginTop: 8 },
   metricGrid: { flexDirection: "row", marginBottom: 0 },
+  addRow: { flexDirection: "row", gap: 10, marginTop: 16, marginBottom: 4 },
   addBtn: {
     flexDirection: "row", alignItems: "center", justifyContent: "center",
-    borderRadius: 16, paddingVertical: 14, gap: 10, marginTop: 16, marginBottom: 4,
+    borderRadius: 16, paddingVertical: 14, gap: 8,
     shadowColor: "#3D7FFF", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 12, elevation: 6,
   },
-  addBtnIcon: { color: "#fff", fontSize: 20, fontWeight: "700" },
+  voiceBtn: {
+    flex: 0, paddingHorizontal: 20,
+    backgroundColor: "rgba(61,127,255,0.12)",
+    borderWidth: 1.5,
+    shadowColor: "transparent", elevation: 0,
+  },
+  addBtnIcon: { color: "#fff", fontSize: 18, fontWeight: "700" },
   addBtnText: { color: "#fff", fontSize: 15, fontWeight: "700" },
   sectionTitle: { fontSize: 18, fontWeight: "800", letterSpacing: -0.3, marginTop: 24, marginBottom: 12 },
   actionRow: { flexDirection: "row", gap: 10, marginBottom: 8 },
@@ -335,7 +352,6 @@ const s = StyleSheet.create({
   txAmount: { fontSize: 14, fontWeight: "700" },
   emptyRow: { padding: 32, alignItems: "center" },
   emptyText: { fontSize: 14 },
-  // Modal
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.75)", justifyContent: "flex-end" },
   modalCard: { borderTopLeftRadius: 28, borderTopRightRadius: 28, borderWidth: 1, padding: 28, paddingBottom: 40 },
   modalTitle: { fontSize: 22, fontWeight: "800", marginBottom: 20 },

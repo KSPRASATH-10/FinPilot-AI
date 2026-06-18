@@ -1,5 +1,37 @@
 [
   {
+    "id": "voice_1781760664555",
+    "date": "2026-06-18T05:31:04.555Z",
+    "amount": 450,
+    "category": "Food",
+    "description": "Food",
+    "type": "expense"
+  },
+  {
+    "id": "voice_1781760571575",
+    "date": "2026-06-18T05:29:31.575Z",
+    "amount": 150,
+    "category": "Transport",
+    "description": "Spent 150",
+    "type": "expense"
+  },
+  {
+    "id": "scan_1781759558080_1",
+    "date": "2026-06-18T05:12:17.806Z",
+    "amount": 70,
+    "category": "Food",
+    "description": "MOJITO",
+    "type": "expense"
+  },
+  {
+    "id": "scan_1781759558074_0",
+    "date": "2026-06-18T05:12:17.806Z",
+    "amount": 300,
+    "category": "Food",
+    "description": "CLASSIC PLATE",
+    "type": "expense"
+  },
+  {
     "id": "manual_1781674589245",
     "date": "2026-06-17T05:36:29.245Z",
     "amount": 25,

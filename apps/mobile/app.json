@@ -14,7 +14,8 @@
       "infoPlist": {
         "NSCameraUsageDescription": "FinPilot needs camera access to scan bills and receipts.",
         "NSPhotoLibraryUsageDescription": "FinPilot needs gallery access to select bill images.",
-        "NSPhotoLibraryAddUsageDescription": "FinPilot needs permission to save reports."
+        "NSPhotoLibraryAddUsageDescription": "FinPilot needs permission to save reports.",
+        "NSMicrophoneUsageDescription": "Allow FinPilot to record voice commands for expense tracking."
       }
     },
     "android": {
@@ -26,7 +27,8 @@
       "permissions": [
         "CAMERA",
         "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE"
+        "WRITE_EXTERNAL_STORAGE",
+        "RECORD_AUDIO"
       ]
     },
     "web": {
@@ -47,6 +49,12 @@
         {
           "photosPermission": "Allow FinPilot to access your photos to select bill images.",
           "cameraPermission": "Allow FinPilot to use your camera to scan bills."
+        }
+      ],
+      [
+        "expo-av",
+        {
+          "microphonePermission": "Allow FinPilot to record voice commands for expense tracking."
         }
       ]
     ],
