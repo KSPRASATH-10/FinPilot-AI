@@ -1,5 +1,77 @@
 [
   {
+    "id": "scan_1781888324839_1",
+    "date": "2026-06-19T16:58:43.431Z",
+    "amount": 1498.6,
+    "category": "General",
+    "description": "Taparia Universal Tool Kit",
+    "type": "expense"
+  },
+  {
+    "id": "scan_1781888324838_0",
+    "date": "2026-06-19T16:58:43.431Z",
+    "amount": 2991.3,
+    "category": "General",
+    "description": "Bosch All-in-One Metal Hand Tool Kit",
+    "type": "expense"
+  },
+  {
+    "id": "scan_1781888284894_1",
+    "date": "2026-06-19T16:58:00.213Z",
+    "amount": 1498.6,
+    "category": "General",
+    "description": "Taparia Universal Tool Kit",
+    "type": "expense"
+  },
+  {
+    "id": "scan_1781888284890_0",
+    "date": "2026-06-19T16:58:00.213Z",
+    "amount": 2991.3,
+    "category": "General",
+    "description": "Bosch All-in-One Metal Hand Tool Kit",
+    "type": "expense"
+  },
+  {
+    "id": "scan_1781860004431_1",
+    "date": "2026-06-19T09:06:08.560Z",
+    "amount": 35,
+    "category": "Food",
+    "description": "MOJITO (1/2 split)",
+    "type": "expense"
+  },
+  {
+    "id": "scan_1781860004428_0",
+    "date": "2026-06-19T09:06:08.560Z",
+    "amount": 150,
+    "category": "Food",
+    "description": "CLASSIC PLATE (1/2 split)",
+    "type": "expense"
+  },
+  {
+    "id": "scan_1781843481560_1",
+    "date": "2026-06-19T04:31:20.303Z",
+    "amount": 1498.6,
+    "category": "General",
+    "description": "Taparia Universal Tool Kit",
+    "type": "expense"
+  },
+  {
+    "id": "scan_1781843481557_0",
+    "date": "2026-06-19T04:31:20.303Z",
+    "amount": 2991.3,
+    "category": "General",
+    "description": "Bosch All-in-One Metal Hand Tool Kit",
+    "type": "expense"
+  },
+  {
+    "id": "manual_1781790596381",
+    "date": "2026-06-18T13:49:56.381Z",
+    "amount": 15000,
+    "category": "Income",
+    "description": "Income",
+    "type": "income"
+  },
+  {
     "id": "voice_1781760664555",
     "date": "2026-06-18T05:31:04.555Z",
     "amount": 450,

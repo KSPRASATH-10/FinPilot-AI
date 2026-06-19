@@ -4,21 +4,23 @@ import path from "path";
 import { requireAuth, AuthRequest } from "../../middleware/auth";
 
 const router = Router();
-
 const DATA_DIR = path.join(process.cwd(), "data", "transactions");
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+const BUDGET_DIR = path.join(process.cwd(), "data", "budgets");
 
 function userFile(userId: string): string {
-  // One JSON file per user: data/transactions/<userId>.json
   const safe = userId.replace(/[^a-zA-Z0-9_-]/g, "_");
   return path.join(DATA_DIR, `${safe}.json`);
+}
+
+function budgetFile(userId: string): string {
+  const safe = userId.replace(/[^a-zA-Z0-9_-]/g, "_");
+  return path.join(BUDGET_DIR, `${safe}.json`);
 }
 
 interface StoredTransaction {
   id: string;
   date: string;
-  amount: number;
+  amount: number; // Stored natively in base currency scale (INR)
   category: string;
   description: string;
   type: "expense" | "income";
@@ -29,34 +31,35 @@ function loadTransactions(userId: string): StoredTransaction[] {
     if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
     const file = userFile(userId);
     if (!fs.existsSync(file)) return [];
-    const raw = fs.readFileSync(file, "utf-8");
-    return JSON.parse(raw) as StoredTransaction[];
-  } catch {
-    return [];
-  }
+    return JSON.parse(fs.readFileSync(file, "utf-8")) as StoredTransaction[];
+  } catch { return []; }
 }
 
 function saveTransactions(userId: string, items: StoredTransaction[]): void {
   try {
     if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
     fs.writeFileSync(userFile(userId), JSON.stringify(items, null, 2), "utf-8");
-  } catch (e: any) {
-    console.error(`[Transactions] Failed to save for user ${userId}:`, e.message);
-  }
+  } catch (e: any) { console.error(`[Transactions] Save failure:`, e.message); }
 }
 
 // ─── GET /api/v1/transactions ─────────────────────────────────────────────────
-// Returns all transactions for the authenticated user, newest first.
-
 router.get("/", requireAuth, (req: AuthRequest, res: Response) => {
   const userId = req.user!.id;
   const items = loadTransactions(userId);
-  return res.json({ success: true, data: { items } });
+  
+  // Fetch budget target threshold config block context to attach inline
+  let limitValue = 25000; 
+  try {
+    const bFile = budgetFile(userId);
+    if (fs.existsSync(bFile)) {
+      limitValue = JSON.parse(fs.readFileSync(bFile, "utf-8")).monthlyLimit || 25000;
+    }
+  } catch {}
+
+  return res.json({ success: true, data: { items, budgetLimit: limitValue } });
 });
 
 // ─── POST /api/v1/transactions ────────────────────────────────────────────────
-// Adds a single transaction and persists to disk immediately.
-
 router.post("/", requireAuth, (req: AuthRequest, res: Response) => {
   const userId = req.user!.id;
   const { id, date, amount, category, description, type } = req.body;
@@ -75,22 +78,15 @@ router.post("/", requireAuth, (req: AuthRequest, res: Response) => {
   };
 
   const items = loadTransactions(userId);
-  // Deduplicate by id to prevent double-saves on retry
   const existing = items.findIndex((t) => t.id === tx.id);
-  if (existing !== -1) {
-    items[existing] = tx;
-  } else {
-    items.unshift(tx); // newest first
-  }
+  if (existing !== -1) items[existing] = tx;
+  else items.unshift(tx);
+  
   saveTransactions(userId, items);
-
-  console.log(`[Transactions] Saved tx ${tx.id} for user ${userId} (${items.length} total)`);
   return res.status(201).json({ success: true, data: { transaction: tx } });
 });
 
 // ─── POST /api/v1/transactions/batch ─────────────────────────────────────────
-// Saves multiple transactions at once (used after bill scan confirm).
-
 router.post("/batch", requireAuth, (req: AuthRequest, res: Response) => {
   const userId = req.user!.id;
   const { items: incoming } = req.body as { items: any[] };
@@ -110,25 +106,38 @@ router.post("/batch", requireAuth, (req: AuthRequest, res: Response) => {
       amount: Number(t.amount),
       category: t.category ?? "General",
       description: t.description ?? "",
-      // 🚀 FIXED: Explicit cast prevents type widening string assignment conflicts
       type: (t.type === "income" ? "income" : "expense") as "expense" | "income",
     }))
     .filter((t) => !existingIds.has(t.id));
 
-  const merged = [...toAdd, ...existing]; // prepend new ones
+  const merged = [...toAdd, ...existing];
   saveTransactions(userId, merged);
-
-  console.log(`[Transactions] Batch saved ${toAdd.length} tx for user ${userId} (${merged.length} total)`);
   return res.status(201).json({ success: true, data: { count: toAdd.length } });
 });
 
-// ─── DELETE /api/v1/transactions/:id ─────────────────────────────────────────
-// Removes a single transaction by id.
+// ─── POST /api/v1/transactions/budget ─────────────────────────────────────────
+// Updates or logs the baseline user budget limits ceiling caps
+router.post("/budget", requireAuth, (req: AuthRequest, res: Response) => {
+  const userId = req.user!.id;
+  const { monthlyLimit } = req.body;
 
+  if (!monthlyLimit || Number(monthlyLimit) <= 0) {
+    return res.status(400).json({ success: false, error: { message: "Valid monthlyLimit threshold is required" } });
+  }
+
+  try {
+    if (!fs.existsSync(BUDGET_DIR)) fs.mkdirSync(BUDGET_DIR, { recursive: true });
+    fs.writeFileSync(budgetFile(userId), JSON.stringify({ monthlyLimit: Number(monthlyLimit) }, null, 2));
+    return res.json({ success: true, data: { monthlyLimit: Number(monthlyLimit) } });
+  } catch (e: any) {
+    return res.status(500).json({ success: false, error: { message: e.message } });
+  }
+});
+
+// ─── DELETE /api/v1/transactions/:id ─────────────────────────────────────────
 router.delete("/:id", requireAuth, (req: AuthRequest, res: Response) => {
   const userId = req.user!.id;
   const { id } = req.params;
-
   const items = loadTransactions(userId);
   const filtered = items.filter((t) => t.id !== id);
 
@@ -137,17 +146,7 @@ router.delete("/:id", requireAuth, (req: AuthRequest, res: Response) => {
   }
 
   saveTransactions(userId, filtered);
-  console.log(`[Transactions] Deleted tx ${id} for user ${userId}`);
   return res.json({ success: true, data: { deleted: id } });
-});
-
-// ─── DELETE /api/v1/transactions (wipe all for account deletion) ──────────────
-
-router.delete("/", requireAuth, (req: AuthRequest, res: Response) => {
-  const userId = req.user!.id;
-  saveTransactions(userId, []);
-  console.log(`[Transactions] Wiped all transactions for user ${userId}`);
-  return res.json({ success: true, data: { message: "All transactions deleted" } });
 });
 
 export default router;

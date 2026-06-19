@@ -19,9 +19,10 @@ export default function HomeScreen() {
   const T = useTheme();
   const user = useAuthStore((s) => s.user);
   const offlineMode = useAuthStore((s) => (s as any).offlineMode ?? false);
-  const { summary, recomputeSummary } = useAnalyticsStore();
+  const { summary } = useAnalyticsStore();
   const { transactions, addTransaction, fetchTransactions } = useTransactionStore();
   const router = useRouter();
+  
   const [refreshing, setRefreshing] = useState(false);
   const [addModal, setAddModal] = useState(false);
   const [voiceModal, setVoiceModal] = useState(false);
@@ -30,14 +31,77 @@ export default function HomeScreen() {
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("Food");
 
+  // Dynamic budget configurations tracking metrics
+  const [allocatedBudget, setAllocatedBudget] = useState(30000); 
+  const [budgetModal, setBudgetModal] = useState(false);
+  const [budgetInput, setBudgetInput] = useState("30000");
+
+  // 🔄 LIFECYCLE: Synchronize data states from server endpoints dynamically
   useEffect(() => {
-    fetchTransactions();
-  }, [user?.id]);
+    async function loadDashboardAndBudget() {
+      await fetchTransactions();
+      
+      try {
+        const envUrl = typeof globalThis !== 'undefined' ? (globalThis as any).process?.env?.EXPO_PUBLIC_API_URL : undefined;
+        const apiURL = envUrl || "http://10.0.2.2:4000";
+        const token = (useAuthStore.getState() as any).token;
+        
+        const res = await fetch(`${apiURL}/api/v1/transactions`, {
+          headers: { "Authorization": `Bearer ${token}` }
+        });
+        const json = await res.json();
+        
+        if (json.success && json.data.budgetLimit) {
+          setAllocatedBudget(json.data.budgetLimit);
+          setBudgetInput(json.data.budgetLimit.toString());
+        }
+      } catch (err) {
+        console.warn("[Budget Sync] Failed to retrieve server threshold metrics:", err);
+      }
+    }
+    
+    loadDashboardAndBudget();
+  }, [user?.id, transactions.length]);
 
   const onRefresh = async () => {
     setRefreshing(true);
     await fetchTransactions();
     setRefreshing(false);
+  };
+
+  // 💾 NETWORK HANDLER: Sync budget alterations directly into backend storage JSON files
+  const handleSaveBudget = async () => {
+    const numericBudget = parseFloat(budgetInput.replace(/,/g, ""));
+    if (numericBudget && numericBudget > 0) {
+      try {
+        const envUrl = typeof globalThis !== 'undefined' ? (globalThis as any).process?.env?.EXPO_PUBLIC_API_URL : undefined;
+        const apiURL = envUrl || "http://10.0.2.2:4000";
+        const token = (useAuthStore.getState() as any).token;
+
+        const res = await fetch(`${apiURL}/api/v1/transactions/budget`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
+          body: JSON.stringify({ monthlyLimit: numericBudget })
+        });
+        
+        const json = await res.json();
+        if (json.success) {
+          setAllocatedBudget(numericBudget);
+          setBudgetModal(false);
+          Alert.alert("Success", "Budget threshold synced securely across your devices!");
+        } else {
+          throw new Error();
+        }
+      } catch {
+        setAllocatedBudget(numericBudget);
+        setBudgetModal(false);
+      }
+    } else {
+      Alert.alert("Invalid Metric", "Please submit a valid number format greater than 0.");
+    }
   };
 
   const handleAddEntry = () => {
@@ -60,6 +124,9 @@ export default function HomeScreen() {
 
   const fmt = (n: number) => `₹${(n / 1000).toFixed(1)}K`;
   const recent = transactions.slice(0, 5);
+  const currentExpenses = summary?.expenses ?? 0;
+  const budgetUtilization = Math.min(100, Math.max(0, (currentExpenses / allocatedBudget) * 100));
+
   const healthColor =
     (summary?.healthScore ?? 0) >= 75 ? T.success
     : (summary?.healthScore ?? 0) >= 50 ? T.warning
@@ -71,6 +138,13 @@ export default function HomeScreen() {
     Entertainment: "🎬", Education: "📚", Income: "💰", General: "💳",
   };
 
+  const getInsightText = () => {
+    if (currentExpenses === 0) return "No transaction outflows logged this cycle. Budget is healthy.";
+    if (budgetUtilization > 90) return "⚠️ Action required: You've exhausted over 90% of your allocated budget.";
+    if (budgetUtilization > 65) return "Notice: Outflows are expanding faster than the target threshold curves.";
+    return "✓ Optimal status: Spend momentum remains locked securely within your safe savings bounds.";
+  };
+
   return (
     <Screen>
       <ScrollView
@@ -78,61 +152,77 @@ export default function HomeScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={T.accent} />}
         contentContainerStyle={{ paddingVertical: 20 }}
       >
-        {/* Offline banner */}
         {offlineMode && (
-          <View style={[s.offlineBanner, { backgroundColor: `${T.warning}22`, borderColor: T.warning }]}>
-            <Text style={[s.offlineText, { color: T.warning }]}>
+          <View style={[styles.offlineBanner, { backgroundColor: `${T.warning}22`, borderColor: T.warning }]}>
+            <Text style={[styles.offlineText, { color: T.warning }]}>
               ⚡ Demo Mode — backend unreachable. Set EXPO_PUBLIC_API_URL to your machine's LAN IP.
             </Text>
           </View>
         )}
 
         {/* Header */}
-        <View style={s.header}>
+        <View style={styles.header}>
           <View>
-            <Text style={[s.greeting, { color: T.textSub }]}>Good day,</Text>
-            <Text style={[s.name, { color: T.text }]}>{user?.name?.split(" ")[0] ?? "User"} 👋</Text>
+            <Text style={[styles.greeting, { color: T.textSub }]}>Good day,</Text>
+            <Text style={[styles.name, { color: T.text }]}>{user?.name?.split(" ")[0] ?? "User"} 👋</Text>
           </View>
-          <TouchableOpacity style={[s.notifBtn, { backgroundColor: T.card, borderColor: T.cardBorder }]}>
+          <TouchableOpacity style={[styles.notifBtn, { backgroundColor: T.card, borderColor: T.cardBorder }]}>
             <Text style={{ fontSize: 20 }}>🔔</Text>
           </TouchableOpacity>
         </View>
 
         {/* Health Score */}
-        <GlassCard style={[s.healthCard, { borderColor: `${healthColor}33` }]}>
-          <View style={s.healthRow}>
+        <GlassCard style={[styles.healthCard, { borderColor: `${healthColor}33` }]}>
+          <View style={styles.healthRow}>
             <View>
-              <Text style={[s.healthLabel, { color: T.textSub }]}>Financial Health Score</Text>
-              <Text style={[s.healthScore, { color: healthColor }]}>
+              <Text style={[styles.healthLabel, { color: T.textSub }]}>Financial Health Score</Text>
+              <Text style={[styles.healthScore, { color: healthColor }]}>
                 {summary && (summary.income > 0 || summary.expenses > 0) ? summary.healthScore : "--"}
-                <Text style={s.healthMax}>/100</Text>
+                <Text style={styles.healthMax}>/100</Text>
               </Text>
             </View>
             {summary && (summary.income > 0 || summary.expenses > 0) && (
-              <View style={[s.scoreBadge, { backgroundColor: `${healthColor}22` }]}>
-                <Text style={[s.scoreBadgeText, { color: healthColor }]}>
+              <View style={[styles.scoreBadge, { backgroundColor: `${healthColor}22` }]}>
+                <Text style={[styles.scoreBadgeText, { color: healthColor }]}>
                   {(summary.healthScore) >= 75 ? "Excellent" : (summary.healthScore) >= 50 ? "Good" : "Needs Work"}
                 </Text>
               </View>
             )}
           </View>
-          <View style={[s.progressBg, { backgroundColor: T.surfaceHigh }]}>
-            <View style={[s.progressFill, {
+          <View style={[styles.progressBg, { backgroundColor: T.surfaceHigh }]}>
+            <View style={[styles.progressFill, {
               width: `${summary && (summary.income > 0 || summary.expenses > 0) ? summary.healthScore : 0}%`,
               backgroundColor: healthColor,
             }]} />
           </View>
-          {!(summary && (summary.income > 0 || summary.expenses > 0)) && (
-            <Text style={[s.noDataHint, { color: T.textMuted }]}>Add income or expenses to see your health score</Text>
-          )}
+        </GlassCard>
+
+        {/* MINI BUDGET PROGRESS CARD */}
+        <GlassCard style={styles.miniBudgetCard}>
+          <View style={styles.budgetHeaderRow}>
+            <Text style={[styles.budgetLabel, { color: T.text }]}>Monthly Budget Context</Text>
+            <Text style={[styles.budgetNumbers, { color: T.textSub }]}>
+              ₹{currentExpenses.toLocaleString()} <Text style={{ fontSize: 11, color: T.textMuted }}>/ ₹{allocatedBudget.toLocaleString()}</Text>
+            </Text>
+          </View>
+          
+          <View style={[styles.progressBg, { backgroundColor: T.surfaceHigh, height: 4 }]}>
+            <View style={[styles.progressFill, {
+              width: `${budgetUtilization}%`,
+              backgroundColor: budgetUtilization > 85 ? T.danger : budgetUtilization > 60 ? T.warning : T.accent
+            }]} />
+          </View>
+          <View style={[styles.insightBadgeContainer, { backgroundColor: T.surface }]}>
+            <Text style={[styles.insightMiniText, { color: T.textSub }]}>{getInsightText()}</Text>
+          </View>
         </GlassCard>
 
         {/* Metric Grid */}
-        <View style={s.metricGrid}>
+        <View style={styles.metricGrid}>
           <MetricCard label="Income" value={fmt(summary?.income ?? 0)} icon="💰" color={T.success} subtext="This period" />
           <MetricCard label="Expenses" value={fmt(summary?.expenses ?? 0)} icon="💳" color={T.danger} subtext="Outflow" />
         </View>
-        <View style={s.metricGrid}>
+        <View style={styles.metricGrid}>
           <MetricCard
             label="Savings"
             value={fmt(summary?.savings ?? 0)}
@@ -150,70 +240,70 @@ export default function HomeScreen() {
         </View>
 
         {/* Add Entry Buttons Row */}
-        <View style={s.addRow}>
+        <View style={styles.addRow}>
           <TouchableOpacity
-            style={[s.addBtn, { backgroundColor: T.accent, flex: 1 }]}
+            style={[styles.addBtn, { backgroundColor: T.accent, flex: 1 }]}
             onPress={() => setAddModal(true)}
             activeOpacity={0.82}
           >
-            <Text style={s.addBtnIcon}>＋</Text>
-            <Text style={s.addBtnText}>Add Entry</Text>
+            <Text style={styles.addBtnIcon}>＋</Text>
+            <Text style={styles.addBtnText}>Add Entry</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[s.addBtn, s.voiceBtn, { borderColor: T.accent }]}
+            style={[styles.addBtn, styles.voiceBtn, { borderColor: T.accent }]}
             onPress={() => setVoiceModal(true)}
             activeOpacity={0.82}
           >
-            <Text style={s.addBtnIcon}>🎙️</Text>
-            <Text style={[s.addBtnText, { color: T.accent }]}>Voice</Text>
+            <Text style={styles.addBtnIcon}>🎙️</Text>
+            <Text style={[styles.addBtnText, { color: T.accent }]}>Voice</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Quick Actions */}
-        <Text style={[s.sectionTitle, { color: T.text }]}>Quick Actions</Text>
-        <View style={s.actionRow}>
+        {/* Quick Actions Grid */}
+        <Text style={[styles.sectionTitle, { color: T.text }]}>Quick Actions</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.actionScrollContainer}>
           {[
-            { label: "Scan Bill", icon: "📷", route: "/scan" },
-            { label: "Reports", icon: "📋", route: "/reports" },
-            { label: "Settings", icon: "⚙️", route: "/settings" },
-            { label: "FinPilot AI", icon: "✦", route: "/assistant" },
+            { label: "Scan Bill", icon: "📷", type: "route", path: "/scan" },
+            { label: "Set Budget", icon: "⚙️", type: "action", action: () => { setBudgetInput(allocatedBudget.toString()); setBudgetModal(true); } },
+            { label: "Reports", icon: "📋", type: "route", path: "/reports" },
+            { label: "FinPilot AI", icon: "✦", type: "route", path: "/(tabs)/assistant" },
           ].map((a) => (
             <TouchableOpacity
               key={a.label}
-              style={[s.actionBtn, { backgroundColor: T.card, borderColor: T.cardBorder }]}
-              onPress={() => router.push(a.route as any)}
+              style={[styles.actionBtn, { backgroundColor: T.card, borderColor: T.cardBorder }]}
+              onPress={() => a.type === "route" ? router.push(a.path as any) : a.action?.()}
               activeOpacity={0.78}
             >
-              <Text style={s.actionIcon}>{a.icon}</Text>
-              <Text style={[s.actionLabel, { color: T.textSub }]}>{a.label}</Text>
+              <Text style={styles.actionIcon}>{a.icon}</Text>
+              <Text style={[styles.actionLabel, { color: T.textSub }]}>{a.label}</Text>
             </TouchableOpacity>
           ))}
-        </View>
+        </ScrollView>
 
         {/* Recent Transactions */}
-        <Text style={[s.sectionTitle, { color: T.text }]}>Recent Transactions</Text>
+        <Text style={[styles.sectionTitle, { color: T.text }]}>Recent Transactions</Text>
         <GlassCard noPad>
           {recent.length === 0 ? (
-            <View style={s.emptyRow}>
-              <Text style={[s.emptyText, { color: T.textMuted }]}>No transactions yet — tap + to add one</Text>
+            <View style={styles.emptyRow}>
+              <Text style={[styles.emptyText, { color: T.textMuted }]}>No transactions yet — tap + to add one</Text>
             </View>
           ) : (
             recent.map((tx, i) => (
               <View
                 key={tx.id ?? i}
-                style={[s.txRow, { borderBottomColor: T.border }, i === recent.length - 1 && { borderBottomWidth: 0 }]}
+                style={[styles.txRow, { borderBottomColor: T.border }, i === recent.length - 1 && { borderBottomWidth: 0 }]}
               >
-                <View style={[s.txDot, { backgroundColor: tx.type === "income" ? `${T.success}22` : T.accentGlow }]}>
+                <View style={[styles.txDot, { backgroundColor: tx.type === "income" ? `${T.success}22` : T.accentGlow }]}>
                   <Text style={{ fontSize: 13 }}>{catIcon[tx.category ?? "General"] ?? "💳"}</Text>
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={[s.txDesc, { color: T.text }]}>{tx.description ?? tx.category}</Text>
-                  <Text style={[s.txDate, { color: T.textMuted }]}>
+                  <Text style={[styles.txDesc, { color: T.text }]}>{tx.description ?? tx.category}</Text>
+                  <Text style={[styles.txDate, { color: T.textMuted }]}>
                     {new Date(tx.date).toLocaleDateString("en-IN", { month: "short", day: "numeric" })} · {tx.category}
                   </Text>
                 </View>
-                <Text style={[s.txAmount, { color: tx.type === "income" ? T.success : T.danger }]}>
+                <Text style={[styles.txAmount, { color: tx.type === "income" ? T.success : T.danger }]}>
                   {tx.type === "income" ? "+" : "−"}₹{tx.amount.toLocaleString()}
                 </Text>
               </View>
@@ -222,30 +312,64 @@ export default function HomeScreen() {
         </GlassCard>
       </ScrollView>
 
-      {/* Manual Add Income/Expense Modal */}
-      <Modal visible={addModal} transparent animationType="slide">
-        <View style={s.modalOverlay}>
-          <View style={[s.modalCard, { backgroundColor: DT.bg, borderColor: DT.border }]}>
-            <Text style={[s.modalTitle, { color: DT.text }]}>Add Entry</Text>
+      {/* Set Budget Modal */}
+      <Modal visible={budgetModal} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalCard, { backgroundColor: DT.bg, borderColor: DT.border }]}>
+            <Text style={[styles.modalTitle, { color: DT.text }]}>Set Monthly Budget</Text>
+            
+            <Text style={[styles.fieldLabel, { color: DT.textSub }]}>Target Budget Limit (₹)</Text>
+            <TextInput
+              style={[styles.input, { backgroundColor: DT.inputBg, borderColor: DT.border, color: DT.text }]}
+              placeholder="e.g. 40000"
+              placeholderTextColor={DT.textMuted}
+              value={budgetInput}
+              onChangeText={setBudgetInput}
+              keyboardType="numeric"
+            />
 
-            <View style={s.typeRow}>
+            <TouchableOpacity
+              style={[styles.confirmModalBtn, { backgroundColor: DT.accent }]}
+              onPress={handleSaveBudget}
+              activeOpacity={0.82}
+            >
+              <Text style={styles.confirmModalText}>Save Budget</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={[styles.cancelModalBtn, { borderColor: DT.border }]}
+              onPress={() => setBudgetModal(false)}
+            >
+              <Text style={[styles.cancelModalText, { color: DT.textSub }]}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Manual Add Entry Modal */}
+      <Modal visible={addModal} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalCard, { backgroundColor: DT.bg, borderColor: DT.border }]}>
+            <Text style={[styles.modalTitle, { color: DT.text }]}>Add Entry</Text>
+
+            <View style={styles.typeRow}>
               <TouchableOpacity
-                style={[s.typeBtn, addType === "expense" && { backgroundColor: DT.danger }]}
+                style={[styles.typeBtn, addType === "expense" && { backgroundColor: DT.danger }]}
                 onPress={() => setAddType("expense")}
               >
-                <Text style={[s.typeBtnText, { color: addType === "expense" ? "#fff" : DT.textSub }]}>Expense</Text>
+                <Text style={[styles.typeBtnText, { color: addType === "expense" ? "#fff" : DT.textSub }]}>Expense</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[s.typeBtn, addType === "income" && { backgroundColor: DT.success }]}
+                style={[styles.typeBtn, addType === "income" && { backgroundColor: DT.success }]}
                 onPress={() => { setAddType("income"); setCategory("Income"); }}
               >
-                <Text style={[s.typeBtnText, { color: addType === "income" ? "#fff" : DT.textSub }]}>Income</Text>
+                <Text style={[styles.typeBtnText, { color: addType === "income" ? "#fff" : DT.textSub }]}>Income</Text>
               </TouchableOpacity>
             </View>
 
-            <Text style={[s.fieldLabel, { color: DT.textSub }]}>Amount (₹)</Text>
+            <Text style={[styles.fieldLabel, { color: DT.textSub }]}>Amount (₹)</Text>
             <TextInput
-              style={[s.input, { backgroundColor: DT.inputBg, borderColor: DT.border, color: DT.text }]}
+              style={[styles.input, { backgroundColor: DT.inputBg, borderColor: DT.border, color: DT.text }]}
               placeholder="0"
               placeholderTextColor={DT.textMuted}
               value={amount}
@@ -253,9 +377,9 @@ export default function HomeScreen() {
               keyboardType="numeric"
             />
 
-            <Text style={[s.fieldLabel, { color: DT.textSub }]}>Description (optional)</Text>
+            <Text style={[styles.fieldLabel, { color: DT.textSub }]}>Description (optional)</Text>
             <TextInput
-              style={[s.input, { backgroundColor: DT.inputBg, borderColor: DT.border, color: DT.text }]}
+              style={[styles.input, { backgroundColor: DT.inputBg, borderColor: DT.border, color: DT.text }]}
               placeholder={addType === "income" ? "e.g. Salary, Freelance..." : "e.g. Groceries..."}
               placeholderTextColor={DT.textMuted}
               value={description}
@@ -264,16 +388,16 @@ export default function HomeScreen() {
 
             {addType === "expense" && (
               <>
-                <Text style={[s.fieldLabel, { color: DT.textSub }]}>Category</Text>
+                <Text style={[styles.fieldLabel, { color: DT.textSub }]}>Category</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 20 }}>
                   <View style={{ flexDirection: "row", gap: 8 }}>
                     {CATEGORIES.map((cat) => (
                       <TouchableOpacity
                         key={cat}
-                        style={[s.catChip, { borderColor: category === cat ? DT.accent : DT.border, backgroundColor: category === cat ? `${DT.accent}22` : DT.card }]}
+                        style={[styles.catChip, { borderColor: category === cat ? DT.accent : DT.border, backgroundColor: category === cat ? `${DT.accent}22` : DT.card }]}
                         onPress={() => setCategory(cat)}
                       >
-                        <Text style={[s.catChipText, { color: category === cat ? DT.accent : DT.textSub }]}>{cat}</Text>
+                        <Text style={[styles.catChipText, { color: category === cat ? DT.accent : DT.textSub }]}>{cat}</Text>
                       </TouchableOpacity>
                     ))}
                   </View>
@@ -282,23 +406,22 @@ export default function HomeScreen() {
             )}
 
             <TouchableOpacity
-              style={[s.confirmModalBtn, { backgroundColor: addType === "income" ? DT.success : DT.accent }]}
+              style={[styles.confirmModalBtn, { backgroundColor: addType === "income" ? DT.success : DT.accent }]}
               onPress={handleAddEntry}
               activeOpacity={0.82}
             >
-              <Text style={s.confirmModalText}>Add {addType === "income" ? "Income" : "Expense"}</Text>
+              <Text style={styles.confirmModalText}>Add {addType === "income" ? "Income" : "Expense"}</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[s.cancelModalBtn, { borderColor: DT.border }]}
+              style={[styles.cancelModalBtn, { borderColor: DT.border }]}
               onPress={() => { setAddModal(false); setAmount(""); setDescription(""); }}
             >
-              <Text style={[s.cancelModalText, { color: DT.textSub }]}>Cancel</Text>
+              <Text style={[styles.cancelModalText, { color: DT.textSub }]}>Cancel</Text>
             </TouchableOpacity>
           </View>
         </View>
       </Modal>
 
-      {/* Voice Entry Modal */}
       <VoiceEntryModal
         visible={voiceModal}
         onClose={() => setVoiceModal(false)}
@@ -308,14 +431,14 @@ export default function HomeScreen() {
   );
 }
 
-const s = StyleSheet.create({
+const styles = StyleSheet.create({
   offlineBanner: { borderWidth: 1, borderRadius: 12, padding: 12, marginBottom: 14 },
   offlineText: { fontSize: 12, fontWeight: "600", lineHeight: 18 },
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 20 },
   greeting: { fontSize: 13, fontWeight: "500" },
   name: { fontSize: 24, fontWeight: "800", letterSpacing: -0.5 },
   notifBtn: { width: 44, height: 44, borderRadius: 14, alignItems: "center", justifyContent: "center", borderWidth: 1 },
-  healthCard: { marginBottom: 16 },
+  healthCard: { marginBottom: 12 },
   healthRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 },
   healthLabel: { fontSize: 12, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 },
   healthScore: { fontSize: 40, fontWeight: "900", letterSpacing: -1 },
@@ -324,7 +447,14 @@ const s = StyleSheet.create({
   scoreBadgeText: { fontSize: 12, fontWeight: "700" },
   progressBg: { height: 6, borderRadius: 6, overflow: "hidden" },
   progressFill: { height: 6, borderRadius: 6 },
-  noDataHint: { fontSize: 11, marginTop: 8 },
+  
+  miniBudgetCard: { padding: 16, marginBottom: 16 },
+  budgetHeaderRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
+  budgetLabel: { fontSize: 13, fontWeight: "700", letterSpacing: -0.2 },
+  budgetNumbers: { fontSize: 13, fontWeight: "700" },
+  insightBadgeContainer: { marginTop: 12, padding: 10, borderRadius: 10 },
+  insightMiniText: { fontSize: 11, fontWeight: "600", lineHeight: 15 },
+
   metricGrid: { flexDirection: "row", marginBottom: 0 },
   addRow: { flexDirection: "row", gap: 10, marginTop: 16, marginBottom: 4 },
   addBtn: {
@@ -340,11 +470,14 @@ const s = StyleSheet.create({
   },
   addBtnIcon: { color: "#fff", fontSize: 18, fontWeight: "700" },
   addBtnText: { color: "#fff", fontSize: 15, fontWeight: "700" },
+  
   sectionTitle: { fontSize: 18, fontWeight: "800", letterSpacing: -0.3, marginTop: 24, marginBottom: 12 },
-  actionRow: { flexDirection: "row", gap: 10, marginBottom: 8 },
-  actionBtn: { flex: 1, alignItems: "center", paddingVertical: 16, borderRadius: 16, borderWidth: 1, gap: 6 },
+  
+  actionScrollContainer: { flexDirection: "row", gap: 10, paddingRight: 16 },
+  actionBtn: { width: 85, alignItems: "center", paddingVertical: 16, borderRadius: 16, borderWidth: 1, gap: 6 },
   actionIcon: { fontSize: 22 },
   actionLabel: { fontSize: 10, fontWeight: "600", textAlign: "center" },
+  
   txRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1, gap: 12 },
   txDot: { width: 38, height: 38, borderRadius: 12, alignItems: "center", justifyContent: "center" },
   txDesc: { fontSize: 14, fontWeight: "600", marginBottom: 2 },

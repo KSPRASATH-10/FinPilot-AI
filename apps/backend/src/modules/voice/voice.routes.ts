@@ -6,9 +6,40 @@ import path from "path";
 const router = Router();
 const VALID_CATEGORIES = ["Food", "Transport", "Utilities", "Healthcare", "Entertainment", "Education", "General", "Income"];
 
-// ─── POST /api/v1/voice/parse ─────────────────────────────────────────────────
-// Body: { audioBase64: string }
-// Returns: { intent: { amount, type, category, description, confidence } }
+// 🌐 HELPER: Fetch Live Conversion Multipliers to base INR
+async function convertToINR(amount: number, fromCurrency: string): Promise<{ inrAmount: number; currency: string }> {
+  const symbolMap: Record<string, string> = {
+    "$": "USD", "usd": "USD", "dollars": "USD", "dollar": "USD",
+    "€": "EUR", "eur": "EUR", "euros": "EUR", "euro": "EUR",
+    "£": "GBP", "gbp": "GBP", "pounds": "GBP",
+    "₹": "INR", "inr": "INR", "rupees": "INR", "rupee": "INR"
+  };
+
+  const currencyCode = symbolMap[fromCurrency.toLowerCase().trim()] ?? "INR";
+  if (currencyCode === "INR" || amount <= 0) {
+    return { inrAmount: amount, currency: "INR" };
+  }
+
+  try {
+    const API_KEY = process.env.EXCHANGE_RATE_API_KEY;
+    if (!API_KEY) {
+      // Fallbacks if process env variables aren't hot-reloaded yet
+      const staticRates: Record<string, number> = { "USD": 83.5, "EUR": 90.2, "GBP": 106.1 };
+      return { inrAmount: amount * (staticRates[currencyCode] ?? 1), currency: currencyCode };
+    }
+
+    const res = await fetch(`https://v6.exchangerate-api.com/v6/${API_KEY}/pair/${currencyCode}/INR/${amount}`, {
+      signal: AbortSignal.timeout(3000)
+    });
+    
+    if (!res.ok) throw new Error();
+    const data = await res.json() as any;
+    return { inrAmount: Math.round(Number(data.conversion_result) || amount), currency: currencyCode };
+  } catch {
+    const staticRates: Record<string, number> = { "USD": 83.5, "EUR": 90.2, "GBP": 106.1 };
+    return { inrAmount: amount * (staticRates[currencyCode] ?? 1), currency: currencyCode };
+  }
+}
 
 router.post("/parse", requireAuth, async (req: AuthRequest, res: Response) => {
   const tempFilePath = path.join(__dirname, `temp_${Date.now()}.m4a`);
@@ -21,16 +52,8 @@ router.post("/parse", requireAuth, async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ success: false, error: { message: "audioBase64 is required" } });
     }
 
-    if (!GROQ_KEY) {
-      console.warn("[Voice] GROQ_API_KEY not set in environment");
-      return res.status(500).json({ success: false, error: { message: "Groq credential layer missing" } });
-    }
-
-    // 1. Convert Base64 payload to local physical binary file
     fs.writeFileSync(tempFilePath, Buffer.from(audioBase64, "base64"));
 
-    // 2. Transcribe Audio via Groq Whisper-Large Engine
-    console.log("[Voice] Dispatched binary buffer stream to Groq Whisper matrix...");
     const formData = new FormData();
     formData.append("file", new Blob([fs.readFileSync(tempFilePath)]), "audio.m4a");
     formData.append("model", "whisper-large-v3");
@@ -41,19 +64,13 @@ router.post("/parse", requireAuth, async (req: AuthRequest, res: Response) => {
       body: formData as any,
     });
 
-    if (!groqRes.ok) {
-      const errText = await groqRes.text();
-      console.error("[Voice] Groq Whisper error:", groqRes.status, errText);
-      throw new Error(`Groq speech-to-text gateway failed with status ${groqRes.status}`);
-    }
+    if (!groqRes.ok) throw new Error(`Groq transcription failed`);
 
     const groqData = await groqRes.json() as any;
     const transcribedText = groqData.text || "";
     console.log(`[Voice] Transcribed Text: "${transcribedText}"`);
 
-    // 3. Process transcription text using Groq's Llama 3.1 engine
     const today = new Date().toISOString().split("T")[0];
-    console.log("[Voice] Routing structured analysis text to Groq Llama compiler...");
     
     const llamaRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
@@ -69,11 +86,11 @@ router.post("/parse", requireAuth, async (req: AuthRequest, res: Response) => {
             content: `You are a financial parsing agent. Extract transaction details from this text command: "${transcribedText}"
                   
 Return ONLY a raw JSON object matching this structure (no code fences, no markdown formatting blocks, no conversations):
-{"amount":number,"type":"expense|income","category":"Food|Transport|Utilities|Healthcare|Entertainment|Education|General|Income","description":"short description","confidence":"high|medium|low"}
+{"originalAmount":number,"currencySymbolOrCode":"string","type":"expense|income","category":"Food|Transport|Utilities|Healthcare|Entertainment|Education|General|Income","description":"short description","confidence":"high|medium|low"}
 
 Rules:
-- amount must be positive. If unclear, set to 0.
-- category must be one of the specified list.
+- originalAmount must be positive.
+- Identify currency identifiers (e.g., "$", "USD", "EUR", "Euros", "INR", "₹"). Default to "INR" if unspecified.
 Today's date: ${today}`,
           },
         ],
@@ -81,45 +98,37 @@ Today's date: ${today}`,
       }),
     });
 
-    if (!llamaRes.ok) {
-      const errText = await llamaRes.text();
-      console.error("[Voice] Groq Llama error:", llamaRes.status, errText);
-      throw new Error(`Groq Llama text analysis layer failed with status ${llamaRes.status}`);
-    }
+    if (!llamaRes.ok) throw new Error(`Groq Llama processing failed`);
 
     const llamaBody = await llamaRes.json() as any;
     const rawText = llamaBody?.choices?.[0]?.message?.content ?? "";
-    console.log("[Voice] Analysis raw response:", rawText.slice(0, 200));
     
-    // Extract JSON string safely from potential LLM text wrappers
     const start = rawText.indexOf("{");
     const end = rawText.lastIndexOf("}");
+    if (start === -1 || end === -1) throw new Error("JSON Parsing exception");
 
-    if (start === -1 || end === -1) {
-      console.warn("[Voice] No JSON layout bounds discovered in raw inference block");
-      return res.json({ success: true, data: { intent: null, raw: rawText, reason: "Parsing anomaly" } });
-    }
+    const parsed = JSON.parse(rawText.substring(start, end + 1));
 
-    const jsonSlice = rawText.substring(start, end + 1);
-    const parsed = JSON.parse(jsonSlice);
+    // 💥 MULTI-CURRENCY CONVERSION PIPELINE ENGINE RUNTIME
+    const detectedCurrency = parsed.currencySymbolOrCode || "INR";
+    const rawAmt = Math.abs(Number(parsed.originalAmount) || 0);
+    const conversion = await convertToINR(rawAmt, detectedCurrency);
 
-    // Sanitize and map structural typing bounds
     const intent = {
-      amount: Math.abs(Number(parsed.amount) || 0),
+      amount: conversion.inrAmount, // Evaluated to functional base currency INR
       type: parsed.type === "income" ? "income" : "expense",
       category: VALID_CATEGORIES.includes(parsed.category) ? parsed.category : "General",
-      description: String(parsed.description || "").trim().slice(0, 80),
+      description: `${conversion.currency !== "INR" ? `[${rawAmt} ${conversion.currency}] ` : ""}${String(parsed.description || "").trim()}`.slice(0, 80),
       confidence: ["high", "medium", "low"].includes(parsed.confidence) ? parsed.confidence : "high",
     };
 
-    console.log("[Voice] Success! Parsed intent output:", JSON.stringify(intent));
+    console.log("[Voice] Success! Converted intent output mapping:", JSON.stringify(intent));
     return res.json({ success: true, data: { intent, raw: rawText } });
 
   } catch (e: any) {
-    console.error("[Voice] Execution Pipeline failure:", e.message);
+    console.error("[Voice Pipeline Failure]:", e.message);
     return res.status(500).json({ success: false, error: { message: e.message } });
   } finally {
-    // Securely un-link local temporary file allocations from the filesystem disk
     if (fs.existsSync(tempFilePath)) {
       try { fs.unlinkSync(tempFilePath); } catch {}
     }

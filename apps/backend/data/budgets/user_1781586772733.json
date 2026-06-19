@@ -1,0 +1,12 @@
+{
+  "allocations": {
+    "Food": 8789,
+    "Transport": 5000,
+    "Utilities": 4000,
+    "Healthcare": 3000,
+    "Entertainment": 2402,
+    "Education": 5000,
+    "General": 3000
+  },
+  "updatedAt": "2026-06-19T16:58:08.546Z"
+}

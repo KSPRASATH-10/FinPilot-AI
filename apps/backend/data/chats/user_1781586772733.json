@@ -1,0 +1,152 @@
+[
+  {
+    "role": "user",
+    "content": "🎙️ Where did I spend on food today?",
+    "timestamp": 1781860074879
+  },
+  {
+    "role": "assistant",
+    "content": "Unfortunately, I don't see any real-time data on your daily expenses, but I can tell you that your total food expense for the month is ₹1030.",
+    "timestamp": 1781860074880
+  },
+  {
+    "role": "user",
+    "content": "🎙️ எனக்கு சேமிப்பு திப்ஸ் கொடு",
+    "timestamp": 1781860098121
+  },
+  {
+    "role": "assistant",
+    "content": "உங்கள் சேமிப்பு திப்ஸ் இது: மாதாந்திர சேமிப்பு விகிதத்தை அதிகரிக்கவும், விருப்பமான பணப்பரிமாற",
+    "timestamp": 1781860098122
+  },
+  {
+    "role": "user",
+    "content": "🎙️ என்னுடைய income எவ்வளவு?",
+    "timestamp": 1781860121151
+  },
+  {
+    "role": "assistant",
+    "content": "உங்கள் மொத்த வருமானம் ₹15000.",
+    "timestamp": 1781860121152
+  },
+  {
+    "role": "user",
+    "content": "🎙️ New York",
+    "timestamp": 1781860132835
+  },
+  {
+    "role": "assistant",
+    "content": "I'm FinPilot, but I'm not here to discuss New York. You have a financial health score of 91/100, which is excellent.",
+    "timestamp": 1781860132836
+  },
+  {
+    "role": "user",
+    "content": "🎙️ நீ யாரு?",
+    "timestamp": 1781860145618
+  },
+  {
+    "role": "assistant",
+    "content": "நான் ஃபின்பைலட், ஒரு நிதி ஆலோசகர். நீங்கள் என்ன வினவ வேண்டும்?",
+    "timestamp": 1781860145619
+  },
+  {
+    "role": "user",
+    "content": "🎙️ Hello! I'm going to show you how to make a beautiful and easy to make Christmas tree.",
+    "timestamp": 1781860415282
+  },
+  {
+    "role": "assistant",
+    "content": "I'm FinPilot, not here to discuss crafting, but to help with your finances. How can I assist you with your financial situation today?",
+    "timestamp": 1781860415283
+  },
+  {
+    "role": "user",
+    "content": "🎙️ Hjulet. On the right wing, I don't care in a shit. Undertekster av Amara.org-gemenskapen",
+    "timestamp": 1781860511628
+  },
+  {
+    "role": "assistant",
+    "content": "Jag förstår inte vad du säger. Det verkar vara en referens till en film eller en text, men jag kan inte koppla det till en relevant finansiell fråga. Vill du ställa en specifik fråga om din ekonomiska situation?",
+    "timestamp": 1781860511629
+  },
+  {
+    "role": "user",
+    "content": "🎙️ Good morning",
+    "timestamp": 1781860530299
+  },
+  {
+    "role": "assistant",
+    "content": "Good morning, your current financial health score is 91 out of 100, indicating a stable financial situation.",
+    "timestamp": 1781860530300
+  },
+  {
+    "role": "user",
+    "content": "🎙️ تاکن ہندی",
+    "timestamp": 1781860542800
+  },
+  {
+    "role": "assistant",
+    "content": "मैं हिंदी में बात कर सकता हूँ। कृपया अपना प्रश्न पूछें।",
+    "timestamp": 1781860542801
+  },
+  {
+    "role": "user",
+    "content": "🎙️ ரிப்ளை இன் திலங்கு",
+    "timestamp": 1781860555559
+  },
+  {
+    "role": "assistant",
+    "content": "நல்லது நீ தனிநபர் வருமானம் மற்றும் செலவுகள் மேல் நிலையான தொடர்பு உள்ளது. நீ தனிநபர் வ",
+    "timestamp": 1781860555560
+  },
+  {
+    "role": "user",
+    "content": "🎙️ రిప్లై ఇన్ తెలుగు",
+    "timestamp": 1781860570965
+  },
+  {
+    "role": "assistant",
+    "content": "మీ ఆర్థిక స్థితి చాలా మెరుగ్గా ఉంది. మీ ఆదాయం మీ ఖర్చుల కంటే ఎక్కువగా ఉం",
+    "timestamp": 1781860570966
+  },
+  {
+    "role": "user",
+    "content": "🎙️ What are you telling?",
+    "timestamp": 1781860583071
+  },
+  {
+    "role": "assistant",
+    "content": "You're currently earning ₹15000 per month, and after deducting ₹5824.9 in expenses, you're left with a projected savings of ₹9175.1.",
+    "timestamp": 1781860583072
+  },
+  {
+    "role": "user",
+    "content": "🎙️ Talk in Malayalam",
+    "timestamp": 1781860606290
+  },
+  {
+    "role": "assistant",
+    "content": "നിലവിലെ ഫിനാൻഷ്യൽ സ്ഥിതി (ലൈവ് ലെഡ്ജർ):\n- മൊത്തം വരുമാനം: ₹15000\n- മൊത്തം വിലമതി",
+    "timestamp": 1781860606291
+  },
+  {
+    "role": "user",
+    "content": "🎙️ கூட்டன் அபந்து",
+    "timestamp": 1781860625235
+  },
+  {
+    "role": "assistant",
+    "content": "நண்பா, உங்கள் வருமானம் மற்றும் செலவுகளை தெளிவாகப் பார்ப்பது மிகவும் முக்கியம். உங்கள் வ",
+    "timestamp": 1781860625236
+  },
+  {
+    "role": "user",
+    "content": "🎙️ ಹೈಲ್ ಹಿಟ್ಲರ್",
+    "timestamp": 1781860642127
+  },
+  {
+    "role": "assistant",
+    "content": "ನಿಮ್ಮ ವ್ಯವಹಾರದ ಸ್ಥಿತಿಯಲ್ಲಿ, ನಿಮ್ಮ ಆದಾಯದ 38.9% ಹಣಕಾಸು ಸಂಸ್ಕರಣೆಗೆ ಉಪಯೋಗಿಸ",
+    "timestamp": 1781860642128
+  }
+]

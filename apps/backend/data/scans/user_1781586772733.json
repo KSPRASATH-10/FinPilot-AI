@@ -1,0 +1,38 @@
+[
+  {
+    "merchantName": "GUJARAT FREIGHT TOOLS",
+    "totalCost": 4490,
+    "items": [
+      {
+        "name": "Bosch All-in-One Metal Hand Tool Kit",
+        "amount": 2991.3,
+        "category": "General"
+      },
+      {
+        "name": "Taparia Universal Tool Kit",
+        "amount": 1498.6,
+        "category": "General"
+      }
+    ],
+    "timestamp": 1781888288532,
+    "date": "2026-06-19T16:58:00.213Z"
+  },
+  {
+    "merchantName": "ZAWARMA ABIATHI FOODS",
+    "totalCost": 370,
+    "items": [
+      {
+        "name": "CLASSIC PLATE",
+        "amount": 300,
+        "category": "Food"
+      },
+      {
+        "name": "MOJITO",
+        "amount": 70,
+        "category": "Food"
+      }
+    ],
+    "timestamp": 1781860003295,
+    "date": "2026-06-19T09:06:08.560Z"
+  }
+]
